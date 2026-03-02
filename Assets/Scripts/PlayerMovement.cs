@@ -12,12 +12,21 @@ public class PlayerMovement : MonoBehaviour
 
     private Rigidbody2D rb;
     private Vector2 moveInput;
+    private Animator animator;
+    private SpriteRenderer spriteRenderer;
+
+    // Animator parameter hashes (tối ưu hiệu năng)
+    private static readonly int AnimState = Animator.StringToHash("AnimState");
+    private static readonly int Grounded = Animator.StringToHash("Grounded");
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         rb.gravityScale = 0f; // Top-down: no gravity
         rb.freezeRotation = true;
+
+        animator = GetComponent<Animator>();
+        spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
     private void Update()
@@ -55,6 +64,31 @@ public class PlayerMovement : MonoBehaviour
         if (moveInput.sqrMagnitude > 1f)
         {
             moveInput.Normalize();
+        }
+
+        // --- Animation ---
+        if (animator != null)
+        {
+            // Luôn set Grounded = true (game top-down, không có nhảy)
+            animator.SetBool(Grounded, true);
+
+            if (moveInput.sqrMagnitude > 0.01f)
+            {
+                // Đang di chuyển → Run animation
+                animator.SetInteger(AnimState, 1);
+            }
+            else
+            {
+                // Đứng yên → Idle animation
+                animator.SetInteger(AnimState, 0);
+            }
+        }
+
+        // --- Flip sprite theo hướng di chuyển ---
+        if (spriteRenderer != null && Mathf.Abs(moveInput.x) > 0.01f)
+        {
+            // Flip khi đi trái, không flip khi đi phải
+            spriteRenderer.flipX = moveInput.x < 0;
         }
     }
 
