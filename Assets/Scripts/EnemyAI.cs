@@ -72,9 +72,70 @@ public class EnemyAI : MonoBehaviour
         }
         else
         {
-            // Ngoài tầm → đứng yên
+            // Ngoài tầm → patrol đi qua lại
+            Patrol();
+        }
+    }
+
+    // ======== PATROL ========
+
+    private Vector2 patrolTarget;
+    private float patrolWaitTimer = 0f;
+    private float patrolWaitTime = 1.5f;  // Dừng bao lâu trước khi đi tiếp
+    private bool hasPatrolTarget = false;
+    private Vector2 spawnPosition;
+    private bool spawnPositionSet = false;
+
+    [Header("Patrol")]
+    public float patrolRange = 2f;       // Phạm vi đi lại
+    public float patrolSpeed = 0.8f;     // Tốc độ đi lại (chậm hơn chase)
+
+    private void Patrol()
+    {
+        // Lưu vị trí spawn lần đầu
+        if (!spawnPositionSet)
+        {
+            spawnPosition = transform.position;
+            spawnPositionSet = true;
+        }
+
+        // Đang chờ → đếm timer
+        if (patrolWaitTimer > 0)
+        {
+            patrolWaitTimer -= Time.deltaTime;
             rb.linearVelocity = Vector2.zero;
             SetMoving(false);
+            return;
+        }
+
+        // Chưa có điểm đến → chọn random
+        if (!hasPatrolTarget)
+        {
+            float randomX = spawnPosition.x + Random.Range(-patrolRange, patrolRange);
+            float randomY = spawnPosition.y + Random.Range(-patrolRange, patrolRange);
+            patrolTarget = new Vector2(randomX, randomY);
+            hasPatrolTarget = true;
+        }
+
+        // Di chuyển đến điểm patrol
+        float dist = Vector2.Distance(transform.position, patrolTarget);
+        if (dist > 0.15f)
+        {
+            Vector2 dir = (patrolTarget - (Vector2)transform.position).normalized;
+            rb.linearVelocity = dir * patrolSpeed;
+            SetMoving(true);
+
+            // Flip sprite theo hướng đi
+            if (spriteRenderer != null)
+                spriteRenderer.flipX = dir.x < 0;
+        }
+        else
+        {
+            // Đến nơi → dừng lại chờ
+            rb.linearVelocity = Vector2.zero;
+            SetMoving(false);
+            hasPatrolTarget = false;
+            patrolWaitTimer = Random.Range(1f, patrolWaitTime);
         }
     }
 
