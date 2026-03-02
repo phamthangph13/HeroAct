@@ -18684,7 +18684,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58839bebd85b9b54e8ba0232a6870618, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DoorController
-  openDistance: 0.8
+  openDistance: 2
   playerTag: Player
   openStateName: doors1_opening
   closeStateName: doors1_closing
