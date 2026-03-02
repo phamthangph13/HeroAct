@@ -5,7 +5,7 @@ using UnityEngine.UI; // For UI components if needed directly, though we mostly 
 public class MainMenuController : MonoBehaviour
 {
     [Header("Scene Management")]
-    public string gameSceneName = "Game"; // Trang gameplay
+    public string gameSceneName = "Hub"; // Trang Hub
     public GameObject menuPanel;
     public GameObject settingsPanel;
 
@@ -28,7 +28,10 @@ public class MainMenuController : MonoBehaviour
             cam.backgroundColor = new Color(0.1f, 0.1f, 0.1f); // Dark gray background
             
             // Ensure AudioListener exists too for sound
-            cameraObj.AddComponent<AudioListener>();
+            if (FindObjectOfType<AudioListener>() == null)
+            {
+                cameraObj.AddComponent<AudioListener>();
+            }
             
             Debug.Log("MainMenuController Warning: No Main Camera found. Created a fallback camera automatically.");
         }
