@@ -105356,8 +105356,6 @@ MonoBehaviour:
   continuousSpawn: 1
   spawnPoints:
   - {fileID: 369644024}
-  - {fileID: 0}
-  - {fileID: 0}
 --- !u!4 &957029082
 Transform:
   m_ObjectHideFlags: 0
@@ -105489,8 +105487,6 @@ MonoBehaviour:
   continuousSpawn: 1
   spawnPoints:
   - {fileID: 1306467476}
-  - {fileID: 0}
-  - {fileID: 0}
 --- !u!4 &1009790366
 Transform:
   m_ObjectHideFlags: 0
@@ -114613,8 +114609,6 @@ MonoBehaviour:
   continuousSpawn: 1
   spawnPoints:
   - {fileID: 630978993}
-  - {fileID: 0}
-  - {fileID: 0}
 --- !u!4 &1955256813
 Transform:
   m_ObjectHideFlags: 0
