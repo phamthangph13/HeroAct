@@ -10,7 +10,7 @@ public class EnemyAI : MonoBehaviour
 {
     [Header("Phát hiện")]
     public float detectRange = 5f;    // Khoảng cách phát hiện player
-    public float attackRange = 0.8f;  // Khoảng cách tấn công
+    public float attackRange = 1.2f;  // Khoảng cách tấn công
 
     [Header("Di chuyển")]
     public float moveSpeed = 2f;
@@ -42,7 +42,15 @@ public class EnemyAI : MonoBehaviour
         // Tìm Player
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
         if (playerObj != null)
+        {
             player = playerObj.transform;
+
+            // Không cho enemy đẩy player
+            Collider2D enemyCol = GetComponent<Collider2D>();
+            Collider2D playerCol = playerObj.GetComponent<Collider2D>();
+            if (enemyCol != null && playerCol != null)
+                Physics2D.IgnoreCollision(enemyCol, playerCol);
+        }
     }
 
     private void Update()
