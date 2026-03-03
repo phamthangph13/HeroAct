@@ -103,13 +103,21 @@ public class SkillManager : MonoBehaviour
         rt.offsetMax = Vector2.zero;
 
         Image img = fillObj.AddComponent<Image>();
-        img.color = new Color(0f, 0f, 0f, 0.7f); // Đen mờ
+        img.color = new Color(0f, 0f, 0f, 0.7f);
         img.type = Image.Type.Filled;
         img.fillMethod = Image.FillMethod.Radial360;
         img.fillOrigin = 2; // Top
         img.fillClockwise = true;
-        img.fillAmount = 0f; // Ẩn ban đầu
-        img.raycastTarget = false; // Không chặn click
+        img.fillAmount = 0f;
+        img.raycastTarget = false;
+
+        // Tạo sprite trắng để filled image hiển thị đúng
+        Texture2D tex = new Texture2D(4, 4);
+        for (int x = 0; x < 4; x++)
+            for (int y = 0; y < 4; y++)
+                tex.SetPixel(x, y, Color.white);
+        tex.Apply();
+        img.sprite = Sprite.Create(tex, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f));
 
         return img;
     }
@@ -141,9 +149,9 @@ public class SkillManager : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 
-        if (keyboard.qKey.wasPressedThisFrame)
+        if (keyboard.digit1Key.wasPressedThisFrame)
             UseSkill1();
-        if (keyboard.wKey.wasPressedThisFrame)
+        if (keyboard.digit2Key.wasPressedThisFrame)
             UseSkill2();
     }
 
