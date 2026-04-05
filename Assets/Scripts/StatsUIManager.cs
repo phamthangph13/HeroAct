@@ -11,8 +11,7 @@ public class StatsUIManager : MonoBehaviour
     [Header("Avatar Button")]
     public Button avatarButton;
 
-    private PlayerStats playerStats;
-    private bool isOpen;
+    [SerializeField] private PlayerStats playerStats;
 
     private readonly string[] statNames = { "damage", "hp", "armor", "critRate", "critDamage", "goldDrop", "lifesteal" };
     private readonly string[] statSuffixes = { "", "", "", "%", "%", "%", "%" };
@@ -27,36 +26,41 @@ public class StatsUIManager : MonoBehaviour
     private Text[] costLegacyTexts;
     private Button[] upgradeButtons;
     private Button closeButton;
+    private CanvasGroup canvasGroup;
+    private PlayerStats subscribedPlayerStats;
+    private bool listenersBound;
+    private bool isOpen;
 
     private static readonly Color AffordableCostColor = new Color(0.95f, 0.84f, 0.45f);
     private static readonly Color UnaffordableCostColor = new Color(0.72f, 0.34f, 0.26f);
 
-    private void Start()
+    private void Awake()
     {
-        playerStats = PlayerStats.Instance;
+        canvasGroup = GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+        }
 
         FindUIElements();
+        BindButtons();
+        ResolvePlayerStats();
+        RefreshUI();
+        SetPanelOpen(false, false);
+    }
 
-        gameObject.SetActive(false);
+    private void OnEnable()
+    {
+        PlayerStats.InstanceChanged += HandlePlayerStatsInstanceChanged;
+        ResolvePlayerStats();
+        SubscribeToPlayerStats();
+        RefreshUI();
+    }
 
-        if (avatarButton != null)
-        {
-            avatarButton.onClick.AddListener(TogglePanel);
-        }
-
-        if (closeButton != null)
-        {
-            closeButton.onClick.AddListener(TogglePanel);
-        }
-
-        for (int i = 0; i < statNames.Length; i++)
-        {
-            if (upgradeButtons[i] != null)
-            {
-                string statName = statNames[i];
-                upgradeButtons[i].onClick.AddListener(() => OnUpgrade(statName));
-            }
-        }
+    private void OnDisable()
+    {
+        PlayerStats.InstanceChanged -= HandlePlayerStatsInstanceChanged;
+        UnsubscribeFromPlayerStats();
     }
 
     private void FindUIElements()
@@ -102,6 +106,99 @@ public class StatsUIManager : MonoBehaviour
         }
     }
 
+    private void BindButtons()
+    {
+        if (listenersBound)
+        {
+            return;
+        }
+
+        if (avatarButton != null)
+        {
+            avatarButton.onClick.AddListener(TogglePanel);
+        }
+
+        if (closeButton != null)
+        {
+            closeButton.onClick.AddListener(ClosePanel);
+        }
+
+        for (int i = 0; i < statNames.Length; i++)
+        {
+            if (upgradeButtons[i] == null)
+            {
+                continue;
+            }
+
+            string statName = statNames[i];
+            upgradeButtons[i].onClick.AddListener(() => OnUpgrade(statName));
+        }
+
+        listenersBound = true;
+    }
+
+    private void ResolvePlayerStats()
+    {
+        if (playerStats != null)
+        {
+            return;
+        }
+
+        if (PlayerStats.Instance != null)
+        {
+            playerStats = PlayerStats.Instance;
+            return;
+        }
+
+        playerStats = Object.FindFirstObjectByType<PlayerStats>();
+        if (playerStats != null)
+        {
+            return;
+        }
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            playerStats = player.GetComponent<PlayerStats>();
+        }
+    }
+
+    private void SubscribeToPlayerStats()
+    {
+        if (playerStats == null || subscribedPlayerStats == playerStats)
+        {
+            return;
+        }
+
+        UnsubscribeFromPlayerStats();
+        subscribedPlayerStats = playerStats;
+        subscribedPlayerStats.StatsChanged += RefreshUI;
+    }
+
+    private void UnsubscribeFromPlayerStats()
+    {
+        if (subscribedPlayerStats == null)
+        {
+            return;
+        }
+
+        subscribedPlayerStats.StatsChanged -= RefreshUI;
+        subscribedPlayerStats = null;
+    }
+
+    private void HandlePlayerStatsInstanceChanged(PlayerStats stats)
+    {
+        if (stats == playerStats)
+        {
+            return;
+        }
+
+        UnsubscribeFromPlayerStats();
+        playerStats = stats;
+        SubscribeToPlayerStats();
+        RefreshUI();
+    }
+
     private void CacheText(Transform parent, string childName, TMP_Text[] tmpArray, Text[] legacyArray, int index)
     {
         Transform target = FindDeep(parent, childName);
@@ -135,10 +232,26 @@ public class StatsUIManager : MonoBehaviour
 
     public void TogglePanel()
     {
-        isOpen = !isOpen;
-        gameObject.SetActive(isOpen);
+        SetPanelOpen(!isOpen, true);
+    }
 
-        if (isOpen)
+    public void ClosePanel()
+    {
+        SetPanelOpen(false, true);
+    }
+
+    private void SetPanelOpen(bool open, bool forceRefresh)
+    {
+        isOpen = open;
+
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = open ? 1f : 0f;
+            canvasGroup.interactable = open;
+            canvasGroup.blocksRaycasts = open;
+        }
+
+        if (open && forceRefresh)
         {
             RefreshUI();
             Canvas.ForceUpdateCanvases();
@@ -147,6 +260,7 @@ public class StatsUIManager : MonoBehaviour
 
     private void OnUpgrade(string statName)
     {
+        ResolvePlayerStats();
         if (playerStats == null)
         {
             return;
@@ -160,15 +274,13 @@ public class StatsUIManager : MonoBehaviour
 
     public void RefreshUI()
     {
-        if (playerStats == null)
-        {
-            playerStats = PlayerStats.Instance;
-        }
-
+        ResolvePlayerStats();
         if (playerStats == null)
         {
             return;
         }
+
+        SubscribeToPlayerStats();
 
         SetText(coinTMPText, coinLegacyText, $"{playerStats.totalCoins:N0} G");
 

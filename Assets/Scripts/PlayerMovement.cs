@@ -21,12 +21,32 @@ public class PlayerMovement : MonoBehaviour
 
     private void Awake()
     {
+        EnsureCorePlayerComponents();
+
         rb = GetComponent<Rigidbody2D>();
         rb.gravityScale = 0f; // Top-down: no gravity
         rb.freezeRotation = true;
 
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+    }
+
+    private void EnsureCorePlayerComponents()
+    {
+        if (GetComponent<PlayerStats>() == null)
+        {
+            gameObject.AddComponent<PlayerStats>();
+        }
+
+        if (GetComponent<PlayerHealth>() == null)
+        {
+            PlayerHealth health = gameObject.AddComponent<PlayerHealth>();
+            PlayerStats stats = GetComponent<PlayerStats>();
+            if (stats != null)
+            {
+                health.maxHP = stats.MaxHP;
+            }
+        }
     }
 
     private void Update()

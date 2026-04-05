@@ -1,63 +1,76 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-/// <summary>
-/// Quản lý HP của Player. Gắn vào Player.
-/// Hiển thị thanh máu và xử lý khi chết.
-/// </summary>
 public class PlayerHealth : MonoBehaviour
 {
     [Header("HP")]
     public float maxHP = 100f;
     public float currentHP;
 
-    [Header("UI (tùy chọn)")]
-    public Image healthBar; // Kéo Image thanh máu vào đây (nếu có)
+    [Header("UI")]
+    public Image healthBar;
 
-    [Header("Hiệu ứng")]
-    public float hitFlashDuration = 0.2f; // Thời gian flash đỏ khi bị đánh
+    [Header("Feedback")]
+    public float hitFlashDuration = 0.2f;
+
+    [Header("Respawn")]
+    [SerializeField] private string hubSceneName = "Hub";
 
     private SpriteRenderer spriteRenderer;
-    private Color originalColor;
-    private bool isDead = false;
+    private Color originalColor = Color.white;
+    private Rigidbody2D rb;
+    private PlayerMovement playerMovement;
+    private PlayerCombat playerCombat;
+    private PlayerStats playerStats;
+    private PlayerDeathOverlay deathOverlay;
+    private bool isDead;
+
+    public bool IsDead => isDead;
+    public bool HasInitializedState { get; private set; }
+    public string HubSceneName => hubSceneName;
+
+    private void Awake()
+    {
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
+            originalColor = spriteRenderer.color;
+        }
+
+        rb = GetComponent<Rigidbody2D>();
+        playerMovement = GetComponent<PlayerMovement>();
+        playerCombat = GetComponent<PlayerCombat>();
+        playerStats = GetComponent<PlayerStats>();
+    }
 
     private void Start()
     {
-        currentHP = maxHP;
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        if (spriteRenderer != null)
-            originalColor = spriteRenderer.color;
-
-        UpdateHealthBar();
+        InitializeState();
     }
 
     public void TakeDamage(float damage)
     {
-        if (isDead) return;
-
-        // Giảm damage bằng giáp (PlayerStats)
-        PlayerStats stats = GetComponent<PlayerStats>();
-        if (stats != null)
+        if (isDead)
         {
-            damage = stats.CalculateDamageTaken(damage);
+            return;
         }
 
-        // Giảm damage nếu đang block
-        PlayerCombat combat = GetComponent<PlayerCombat>();
-        if (combat != null && combat.IsBlocking)
+        EnsureInitialized();
+
+        if (playerStats != null)
         {
-            damage *= 0.2f; // Chỉ nhận 20% damage
-            Debug.Log("Block! Giảm 80% damage!");
+            damage = playerStats.CalculateDamageTaken(damage);
         }
 
-        currentHP -= damage;
-        currentHP = Mathf.Max(0, currentHP);
+        if (playerCombat != null && playerCombat.IsBlocking)
+        {
+            damage *= 0.2f;
+        }
 
-        Debug.Log($"Player bị đánh! HP: {currentHP}/{maxHP}");
-
+        currentHP = Mathf.Max(0f, currentHP - damage);
         UpdateHealthBar();
 
-        // Flash đỏ khi bị đánh
         if (spriteRenderer != null)
         {
             CancelInvoke(nameof(ResetColor));
@@ -65,7 +78,9 @@ public class PlayerHealth : MonoBehaviour
             Invoke(nameof(ResetColor), hitFlashDuration);
         }
 
-        if (currentHP <= 0)
+        PersistProgress();
+
+        if (currentHP <= 0f)
         {
             Die();
         }
@@ -73,43 +88,135 @@ public class PlayerHealth : MonoBehaviour
 
     public void Heal(float amount)
     {
-        if (isDead) return;
+        if (isDead)
+        {
+            return;
+        }
 
-        currentHP += amount;
-        currentHP = Mathf.Min(currentHP, maxHP);
+        EnsureInitialized();
+
+        currentHP = Mathf.Min(maxHP, currentHP + amount);
         UpdateHealthBar();
+        PersistProgress();
+    }
 
-        Debug.Log($"Player hồi máu! HP: {currentHP}/{maxHP}");
+    public void Respawn()
+    {
+        if (playerStats != null)
+        {
+            PlayerProgressPersistence.SaveRespawnState(playerStats);
+        }
+
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    public void ReturnToHub()
+    {
+        if (playerStats != null)
+        {
+            PlayerProgressPersistence.SaveRespawnState(playerStats);
+        }
+
+        SceneManager.LoadScene(hubSceneName);
+    }
+
+    private void InitializeState()
+    {
+        playerStats = GetComponent<PlayerStats>();
+
+        if (playerStats != null)
+        {
+            maxHP = playerStats.MaxHP;
+        }
+
+        currentHP = PlayerProgressPersistence.ResolveCurrentHP(maxHP);
+        isDead = false;
+        HasInitializedState = true;
+
+        if (deathOverlay == null)
+        {
+            deathOverlay = PlayerDeathOverlay.FindOrCreate();
+        }
+
+        deathOverlay?.Hide();
+        ResetColor();
+        SetGameplayEnabled(true);
+        UpdateHealthBar();
+        PersistProgress();
     }
 
     private void Die()
     {
-        isDead = true;
-        Debug.Log("Player đã chết!");
+        if (isDead)
+        {
+            return;
+        }
 
-        // Có thể thêm: load lại scene, hiện Game Over UI...
-        // Ví dụ: reload scene sau 2 giây
-        Invoke(nameof(Respawn), 2f);
+        isDead = true;
+        currentHP = 0f;
+        UpdateHealthBar();
+        SetGameplayEnabled(false);
+        PersistProgress();
+
+        if (deathOverlay == null)
+        {
+            deathOverlay = PlayerDeathOverlay.FindOrCreate();
+        }
+
+        deathOverlay?.Show(this, playerStats);
     }
 
-    private void Respawn()
+    private void EnsureInitialized()
     {
-        UnityEngine.SceneManagement.SceneManager.LoadScene(
-            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
-        );
+        if (!HasInitializedState)
+        {
+            InitializeState();
+        }
+    }
+
+    private void SetGameplayEnabled(bool enabled)
+    {
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+        }
+
+        if (playerMovement != null)
+        {
+            playerMovement.enabled = enabled;
+        }
+
+        if (playerCombat != null)
+        {
+            playerCombat.enabled = enabled;
+        }
+    }
+
+    private void PersistProgress()
+    {
+        if (playerStats == null || !HasInitializedState)
+        {
+            return;
+        }
+
+        PlayerProgressPersistence.Save(playerStats, this);
     }
 
     private void ResetColor()
     {
         if (spriteRenderer != null)
+        {
             spriteRenderer.color = originalColor;
+        }
     }
 
     private void UpdateHealthBar()
     {
-        if (healthBar != null)
+        if (healthBar == null || maxHP <= 0f)
         {
-            healthBar.fillAmount = currentHP / maxHP;
+            return;
         }
+
+        healthBar.fillAmount = currentHP / maxHP;
     }
 }

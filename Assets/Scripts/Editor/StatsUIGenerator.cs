@@ -185,10 +185,9 @@ public class StatsUIGenerator : Editor
         }
 
         Vector2 size = panelRect.sizeDelta;
-        if (size.x < 920f || size.y < 1200f)
-        {
-            panelRect.sizeDelta = new Vector2(Mathf.Max(size.x, 980f), Mathf.Max(size.y, 1280f));
-        }
+        float targetWidth = Mathf.Clamp(size.x > 0f ? size.x : 1180f, 1040f, 1180f);
+        float targetHeight = Mathf.Max(size.y, 1280f);
+        panelRect.sizeDelta = new Vector2(targetWidth, targetHeight);
 
         panelRect.localScale = Vector3.one;
     }

@@ -36,6 +36,11 @@ public class VirtualJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler,
         }
     }
 
+    private void OnDisable()
+    {
+        ResetHandle();
+    }
+
     public void OnPointerDown(PointerEventData eventData)
     {
         OnDrag(eventData);
@@ -47,15 +52,17 @@ public class VirtualJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler,
 
         // Convert screen point to local point in background RectTransform
         Vector2 localPoint;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            background, eventData.position, cam, out localPoint
-        );
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(background, eventData.position, cam, out localPoint))
+        {
+            return;
+        }
 
         // Normalize to -1..1 range based on background size
         Vector2 backgroundSize = background.sizeDelta;
+        float radius = Mathf.Min(backgroundSize.x, backgroundSize.y) * 0.5f;
         Vector2 normalizedInput = new Vector2(
-            localPoint.x / (backgroundSize.x * 0.5f),
-            localPoint.y / (backgroundSize.y * 0.5f)
+            localPoint.x / radius,
+            localPoint.y / radius
         );
 
         // Clamp magnitude
@@ -73,10 +80,15 @@ public class VirtualJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler,
         inputDirection = normalizedInput;
 
         // Move handle visual
-        handle.anchoredPosition = normalizedInput * (backgroundSize.x * 0.5f) * handleRange;
+        handle.anchoredPosition = normalizedInput * radius * handleRange;
     }
 
     public void OnPointerUp(PointerEventData eventData)
+    {
+        ResetHandle();
+    }
+
+    private void ResetHandle()
     {
         inputDirection = Vector2.zero;
         if (handle != null)
