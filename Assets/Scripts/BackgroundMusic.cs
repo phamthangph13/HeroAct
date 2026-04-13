@@ -1,26 +1,34 @@
 using UnityEngine;
 
 /// <summary>
-/// Phát nhạc nền loop liên tục. Tồn tại xuyên suốt các scene (DontDestroyOnLoad).
-/// Kéo file music vào field "Music Clip" trong Inspector.
+/// Plays looping background music and keeps it alive across scene loads.
 /// </summary>
 public class BackgroundMusic : MonoBehaviour
 {
     [Header("Music")]
-    public AudioClip musicClip; // Kéo file music.mp3 vào đây
+    public AudioClip musicClip;
 
     [Header("Settings")]
     [Range(0f, 1f)]
     public float volume = 0.5f;
 
     private AudioSource audioSource;
-
-    // Singleton — chỉ tồn tại 1 instance duy nhất
     private static BackgroundMusic instance;
+
+    private void Reset()
+    {
+        EnsureAudioSourceConfigured();
+        ApplySerializedValues();
+    }
+
+    private void OnValidate()
+    {
+        EnsureAudioSourceConfigured();
+        ApplySerializedValues();
+    }
 
     private void Awake()
     {
-        // Nếu đã có instance khác → hủy cái mới
         if (instance != null && instance != this)
         {
             Destroy(gameObject);
@@ -28,49 +36,67 @@ public class BackgroundMusic : MonoBehaviour
         }
 
         instance = this;
-        DontDestroyOnLoad(gameObject); // Không bị hủy khi chuyển scene
+        DontDestroyOnLoad(gameObject);
 
-        // Setup AudioSource
-        audioSource = gameObject.AddComponent<AudioSource>();
-        audioSource.clip = musicClip;
-        audioSource.volume = volume;
-        audioSource.loop = true;        // Loop liên tục
-        audioSource.playOnAwake = false;
+        EnsureAudioSourceConfigured();
+        volume = GameSettings.GetMusicVolume(volume);
+        ApplySerializedValues();
 
-        // Phát nhạc
         if (musicClip != null)
         {
             audioSource.Play();
-            Debug.Log($"BackgroundMusic: Đang phát '{musicClip.name}' (loop)");
+            Debug.Log($"BackgroundMusic: Playing '{musicClip.name}' in loop.");
         }
         else
         {
-            Debug.LogWarning("BackgroundMusic: Chưa gán Music Clip!");
+            Debug.LogWarning("BackgroundMusic: Missing music clip.");
         }
     }
 
-    /// <summary>
-    /// Thay đổi âm lượng nhạc nền (gọi từ Settings)
-    /// </summary>
     public void SetVolume(float newVolume)
     {
-        volume = newVolume;
-        if (audioSource != null)
+        volume = Mathf.Clamp01(newVolume);
+
+        ApplySerializedValues();
+    }
+
+    public void TogglePause()
+    {
+        if (audioSource == null)
         {
-            audioSource.volume = volume;
+            return;
+        }
+
+        if (audioSource.isPlaying)
+        {
+            audioSource.Pause();
+        }
+        else
+        {
+            audioSource.UnPause();
         }
     }
 
-    /// <summary>
-    /// Tạm dừng / tiếp tục nhạc nền
-    /// </summary>
-    public void TogglePause()
+    private void EnsureAudioSourceConfigured()
     {
-        if (audioSource == null) return;
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
+    }
 
-        if (audioSource.isPlaying)
-            audioSource.Pause();
-        else
-            audioSource.UnPause();
+    private void ApplySerializedValues()
+    {
+        if (audioSource == null)
+        {
+            return;
+        }
+
+        audioSource.clip = musicClip;
+        audioSource.volume = volume;
+        audioSource.loop = true;
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0f;
     }
 }

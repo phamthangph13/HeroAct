@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,6 +8,8 @@ using UnityEngine.UI;
 /// </summary>
 public class EnemyHealth : MonoBehaviour
 {
+    public event Action<EnemyHealth> Died;
+
     [Header("HP")]
     public float maxHP = 50f;
     public float currentHP;
@@ -31,6 +34,8 @@ public class EnemyHealth : MonoBehaviour
     private bool isDead = false;
 
     private static Sprite whiteSprite;
+
+    public bool IsDead => isDead;
 
     private static Sprite GetWhiteSprite()
     {
@@ -177,6 +182,7 @@ public class EnemyHealth : MonoBehaviour
     private void Die()
     {
         isDead = true;
+        Died?.Invoke(this);
 
         // Drop loot
         DropLoot();
@@ -195,7 +201,7 @@ public class EnemyHealth : MonoBehaviour
 
     private void DropLoot()
     {
-        int roll = Random.Range(0, 100);
+        int roll = UnityEngine.Random.Range(0, 100);
 
         if (roll < meatDropChance && meatPrefab != null)
         {

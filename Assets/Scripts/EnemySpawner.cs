@@ -1,33 +1,33 @@
-using UnityEngine;
+using System;
 using System.Collections;
+using UnityEngine;
 
 /// <summary>
-/// Spawn quái vật tại các vị trí chỉ định trên map.
-/// Cách dùng:
-/// 1. Tạo Empty GameObject → đặt tên "EnemySpawner"
-/// 2. Gắn script này
-/// 3. Kéo Enemy Prefab vào
-/// 4. Tạo các Empty child objects làm spawn points → đặt ở các vị trí mong muốn
+/// Spawns enemies at child spawn points in the current scene.
 /// </summary>
 public class EnemySpawner : MonoBehaviour
 {
+    public event Action<GameObject> EnemySpawned;
+
     [Header("Enemy")]
-    public GameObject enemyPrefab; // Kéo prefab zombie vào đây
+    public GameObject enemyPrefab;
 
     [Header("Spawn Settings")]
-    public int maxEnemies = 10;        // Số quái tối đa cùng lúc
-    public float spawnInterval = 3f;   // Giây giữa mỗi lần spawn
-    public bool spawnOnStart = true;   // Spawn ngay khi bắt đầu
-    public bool continuousSpawn = true; // Tiếp tục spawn khi quái bị giết
+    public int maxEnemies = 10;
+    public float spawnInterval = 3f;
+    public bool spawnOnStart = true;
+    public bool continuousSpawn = true;
 
-    [Header("Spawn Points (tạo Empty children)")]
-    public Transform[] spawnPoints;    // Kéo các spawn point vào đây
+    [Header("Spawn Points")]
+    public Transform[] spawnPoints;
 
-    private int currentEnemyCount = 0;
+    private int currentEnemyCount;
+    private Coroutine spawnLoopCoroutine;
+
+    public GameObject LastSpawnedEnemy { get; private set; }
 
     private void Start()
     {
-        // Tự tìm spawn points nếu chưa gán
         if (spawnPoints == null || spawnPoints.Length == 0)
         {
             spawnPoints = new Transform[transform.childCount];
@@ -39,13 +39,13 @@ public class EnemySpawner : MonoBehaviour
 
         if (spawnPoints.Length == 0)
         {
-            Debug.LogWarning("EnemySpawner: Không có spawn points! Tạo Empty children làm vị trí spawn.");
+            Debug.LogWarning("EnemySpawner: No spawn points assigned.");
             return;
         }
 
         if (enemyPrefab == null)
         {
-            Debug.LogWarning("EnemySpawner: Chưa gán Enemy Prefab!");
+            Debug.LogWarning("EnemySpawner: Missing enemy prefab.");
             return;
         }
 
@@ -56,52 +56,71 @@ public class EnemySpawner : MonoBehaviour
 
         if (continuousSpawn)
         {
-            StartCoroutine(SpawnLoop());
+            spawnLoopCoroutine = StartCoroutine(SpawnLoop());
         }
     }
 
-    /// <summary>
-    /// Spawn quái tại tất cả spawn points cùng lúc
-    /// </summary>
     public void SpawnAllAtOnce()
     {
         foreach (Transform point in spawnPoints)
         {
-            if (currentEnemyCount >= maxEnemies) break;
+            if (currentEnemyCount >= maxEnemies)
+            {
+                break;
+            }
+
             SpawnEnemy(point.position);
         }
     }
 
-    /// <summary>
-    /// Spawn 1 quái tại vị trí ngẫu nhiên
-    /// </summary>
     public void SpawnRandom()
     {
-        if (currentEnemyCount >= maxEnemies) return;
+        if (currentEnemyCount >= maxEnemies)
+        {
+            return;
+        }
 
-        int randomIndex = Random.Range(0, spawnPoints.Length);
+        int randomIndex = UnityEngine.Random.Range(0, spawnPoints.Length);
         SpawnEnemy(spawnPoints[randomIndex].position);
+    }
+
+    public void StopSpawning()
+    {
+        continuousSpawn = false;
+
+        if (spawnLoopCoroutine != null)
+        {
+            StopCoroutine(spawnLoopCoroutine);
+            spawnLoopCoroutine = null;
+        }
+    }
+
+    public void OnEnemyDeath()
+    {
+        currentEnemyCount = Mathf.Max(0, currentEnemyCount - 1);
+
+        if (currentEnemyCount == 0)
+        {
+            LastSpawnedEnemy = null;
+        }
     }
 
     private void SpawnEnemy(Vector3 position)
     {
         if (enemyPrefab == null)
         {
-            Debug.LogWarning("EnemySpawner: Enemy Prefab bị null! Hãy kéo prefab từ Project (không phải object trong scene).");
+            Debug.LogWarning("EnemySpawner: Missing enemy prefab.");
             return;
         }
 
         GameObject enemy = Instantiate(enemyPrefab, position, Quaternion.identity);
         currentEnemyCount++;
+        LastSpawnedEnemy = enemy;
 
-        // Khi quái bị hủy → giảm count
         EnemyDeathNotifier notifier = enemy.AddComponent<EnemyDeathNotifier>();
         notifier.spawner = this;
-    }
 
-    public void OnEnemyDeath()
-    {
-        currentEnemyCount--;
+        EnemySpawned?.Invoke(enemy);
     }
 
     private IEnumerator SpawnLoop()
@@ -117,7 +136,6 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 
-    // Vẽ spawn points trong Scene view
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
@@ -130,7 +148,7 @@ public class EnemySpawner : MonoBehaviour
 }
 
 /// <summary>
-/// Tự động thông báo spawner khi enemy bị Destroy
+/// Notifies the source spawner when the spawned enemy is destroyed.
 /// </summary>
 public class EnemyDeathNotifier : MonoBehaviour
 {

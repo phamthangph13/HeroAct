@@ -219,7 +219,7 @@ public class PlayerDeathOverlay : MonoBehaviour
         subtitleRect.pivot = new Vector2(0.5f, 1f);
         subtitleRect.anchoredPosition = new Vector2(0f, -72f);
         subtitleRect.sizeDelta = new Vector2(620f, 110f);
-        subtitleText.enableWordWrapping = true;
+        subtitleText.textWrappingMode = TextWrappingModes.Normal;
         subtitleText.enableAutoSizing = true;
         subtitleText.fontSizeMin = 18f;
         subtitleText.fontSizeMax = 24f;
@@ -426,7 +426,7 @@ public class PlayerDeathOverlay : MonoBehaviour
             TextAlignmentOptions.Center,
             new Color(0.46f, 0.33f, 0.24f),
             false);
-        hintText.enableWordWrapping = true;
+        hintText.textWrappingMode = TextWrappingModes.Normal;
         hintText.enableAutoSizing = true;
         hintText.fontSizeMin = 13f;
         hintText.fontSizeMax = 17f;

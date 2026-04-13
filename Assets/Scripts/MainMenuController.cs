@@ -1,164 +1,116 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI; // For UI components if needed directly, though we mostly use dynamic events
+using UnityEngine.UI;
 
 public class MainMenuController : MonoBehaviour
 {
     [Header("Scene Management")]
-    public string gameSceneName = "Hub"; // Trang Hub
+    public string gameSceneName = "Hub";
     public GameObject menuPanel;
     public GameObject settingsPanel;
 
-    [Header("Setting Keys")]
-    private const string MASTER_VOLUME_KEY = "MasterVolume";
-    private const string MUSIC_VOLUME_KEY = "MusicVolume";
-    private const string SFX_VOLUME_KEY = "SFXVolume";
-    private const string QUALITY_INDEX_KEY = "QualityIndex";
-    private const string FULLSCREEN_KEY = "Fullscreen";
-
     private void Awake()
     {
-        // Fail-safe: Auto-create camera if missing to prevent "No Cameras rendering" error
         if (Camera.main == null)
         {
             GameObject cameraObj = new GameObject("Main Camera");
             cameraObj.tag = "MainCamera";
+
             Camera cam = cameraObj.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.1f, 0.1f, 0.1f); // Dark gray background
-            
-            // Ensure AudioListener exists too for sound
-            if (FindObjectOfType<AudioListener>() == null)
+            cam.backgroundColor = new Color(0.1f, 0.1f, 0.1f);
+
+            if (Object.FindFirstObjectByType<AudioListener>() == null)
             {
                 cameraObj.AddComponent<AudioListener>();
             }
-            
-            Debug.Log("MainMenuController Warning: No Main Camera found. Created a fallback camera automatically.");
+
+            Debug.Log("MainMenuController: Created fallback camera.");
         }
 
-        // INIT UI STATE HERE (Moved from Start to prevent 1-frame glitches)
-        Debug.Log($"MainMenuController: Initializing UI. MenuPanel: {menuPanel}, SettingsPanel: {settingsPanel}");
-        
-        if (settingsPanel != null) 
+        if (settingsPanel != null)
         {
             settingsPanel.SetActive(false);
-            Debug.Log("MainMenuController: Disabled SettingsPanel.");
         }
         else
         {
-            Debug.LogError("MainMenuController: SettingsPanel reference is MISSING!");
+            Debug.LogError("MainMenuController: Settings panel reference is missing.");
         }
 
-        if (menuPanel != null) 
+        if (menuPanel != null)
         {
             menuPanel.SetActive(true);
-            Debug.Log("MainMenuController: Enabled MenuPanel.");
         }
     }
 
     private void Start()
     {
-        LoadSettings();
+        GameSettings.ApplyAll();
     }
 
-    public void StartGame() // Bắt đầu game
+    public void StartGame()
     {
-        Debug.Log("MainMenuController: StartGame called.");
         SceneManager.LoadScene(gameSceneName);
     }
 
-    public void OpenSettings() // Mở trang settings
+    public void OpenSettings()
     {
-        Debug.Log("MainMenuController: OpenSettings called.");
-        if (settingsPanel != null) 
+        if (settingsPanel != null)
         {
             settingsPanel.SetActive(true);
-            Debug.Log("MainMenuController: Settings Panel ENABLED.");
         }
         else
         {
-            Debug.LogError("MainMenuController: Cannot open Settings - settingsPanel is null.");
+            Debug.LogError("MainMenuController: Cannot open settings because the panel is null.");
         }
     }
 
-    public void CloseSettings() // Đóng trang settings
+    public void CloseSettings()
     {
-        Debug.Log("MainMenuController: CloseSettings called.");
-        if (settingsPanel != null) 
+        if (settingsPanel != null)
         {
             settingsPanel.SetActive(false);
-            Debug.Log("MainMenuController: Settings Panel DISABLED.");
         }
         else
         {
-            Debug.LogError("MainMenuController: Cannot close Settings - settingsPanel is null.");
+            Debug.LogError("MainMenuController: Cannot close settings because the panel is null.");
         }
-        SaveSettings(); // Optional: Save when closing settings
+
+        GameSettings.Save();
     }
 
-    public void QuitGame() // Thoát khỏi game
+    public void QuitGame()
     {
-        Debug.Log("MainMenuController: QuitGame called. Application.Quit() triggered.");
         Application.Quit();
     }
 
-    #region Settings Logic
-
-    // --- Audio ---
-    // Note: In a real production app, you might route these to an AudioMixer
     public void SetMasterVolume(float volume)
     {
-        AudioListener.volume = volume;
-        PlayerPrefs.SetFloat(MASTER_VOLUME_KEY, volume);
+        GameSettings.SetMasterVolume(volume);
     }
 
     public void SetMusicVolume(float volume)
     {
-        // Placeholder for specific Music AudioSource or Mixer Group
-        PlayerPrefs.SetFloat(MUSIC_VOLUME_KEY, volume);
-        // Example: AudioManager.Instance.SetMusicVolume(volume);
+        GameSettings.SetMusicVolume(volume);
     }
 
     public void SetSFXVolume(float volume)
     {
-        // Placeholder for specific SFX AudioSource or Mixer Group
-        PlayerPrefs.SetFloat(SFX_VOLUME_KEY, volume);
+        GameSettings.SetSfxVolume(volume);
     }
 
-    // --- Graphics ---
     public void SetQuality(int qualityIndex)
     {
-        QualitySettings.SetQualityLevel(qualityIndex);
-        PlayerPrefs.SetInt(QUALITY_INDEX_KEY, qualityIndex);
+        GameSettings.SetQualityIndex(qualityIndex);
     }
 
     public void SetFullscreen(bool isFullscreen)
     {
-        Screen.fullScreen = isFullscreen;
-        PlayerPrefs.SetInt(FULLSCREEN_KEY, isFullscreen ? 1 : 0);
+        GameSettings.SetFullscreen(isFullscreen);
     }
 
-    // --- Persistence ---
-    private void LoadSettings()
+    public void SetTargetFrameRate(int targetFrameRate)
     {
-        // Load Volume
-        float masterVol = PlayerPrefs.GetFloat(MASTER_VOLUME_KEY, 1.0f);
-        AudioListener.volume = masterVol;
-        // Logic to update UI Sliders would go here if we had references to them
-
-        // Load Quality
-        int qualityIndex = PlayerPrefs.GetInt(QUALITY_INDEX_KEY, QualitySettings.GetQualityLevel());
-        QualitySettings.SetQualityLevel(qualityIndex);
-
-        // Load Fullscreen
-        bool isFullscreen = PlayerPrefs.GetInt(FULLSCREEN_KEY, Screen.fullScreen ? 1 : 0) == 1;
-        Screen.fullScreen = isFullscreen;
+        GameSettings.SetTargetFrameRate(targetFrameRate);
     }
-
-    private void SaveSettings()
-    {
-        PlayerPrefs.Save();
-    }
-
-    #endregion
 }

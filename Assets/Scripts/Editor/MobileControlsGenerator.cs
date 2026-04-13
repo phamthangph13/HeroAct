@@ -437,7 +437,7 @@ public class MobileControlsGenerator : Editor
         text.fontSize = fontSize;
         text.alignment = alignment;
         text.color = color;
-        text.enableWordWrapping = false;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
         text.overflowMode = TextOverflowModes.Ellipsis;
         text.raycastTarget = false;
         return text;
